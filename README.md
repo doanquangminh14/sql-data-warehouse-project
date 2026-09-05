@@ -27,10 +27,10 @@ Dự án xây dựng hệ thống **Modern Data Warehouse** từ đầu đến c
 Dự án áp dụng mô hình **Medallion Architecture**:
 
 ```mermaid
-flowchart LR
+flowchart TD
     subgraph Sources["📁 Source Systems"]
-        CRM["CRM Data\n(CSV Files)"]
-        ERP["ERP Data\n(CSV Files)"]
+        CRM["CRM Data<br/>(CSV Files)"]
+        ERP["ERP Data<br/>(CSV Files)"]
     end
 
     subgraph Bronze["🥉 Bronze Layer (Raw)"]
@@ -44,8 +44,8 @@ flowchart LR
     end
 
     subgraph Gold["🥇 Gold Layer (Curated)"]
-        Dim["Dimension Tables\n(dim_customers, dim_products)"]
-        Fact["Fact Tables\n(fact_sales)"]
+        Dim["Dimension Tables<br/>(dim_customers, dim_products)"]
+        Fact["Fact Tables<br/>(fact_sales)"]
     end
 
     subgraph Consumption["📊 Analytics & BI"]
