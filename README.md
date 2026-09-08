@@ -6,20 +6,21 @@ Dự án xây dựng hệ thống **Modern Data Warehouse** từ đầu đến c
 
 ## 📌 Mục lục
 - [1. Kiến trúc tổng quan (Medallion Architecture)](#1-kiến-trúc-tổng-quan-medallion-architecture)
-- [2. Mô hình tích hợp nguồn dữ liệu (Integration Model)](#2-mô-hình-tích-hợp-nguồn-dữ-liệu-integration-model)
-- [3. Cấu trúc thư mục](#3-cấu-trúc-thư-mục)
-- [4. Chi tiết các tầng dữ liệu (Data Layers)](#4-chi-tiết-các-tầng-dữ-liệu-data-layers)
+- [2. Luồng dữ liệu & Nguồn gốc (Data Flow / Data Lineage)](#2-luồng-dữ-liệu--nguồn-gốc-data-flow--data-lineage)
+- [3. Mô hình tích hợp nguồn dữ liệu (Integration Model)](#3-mô-hình-tích-hợp-nguồn-dữ-liệu-integration-model)
+- [4. Cấu trúc thư mục](#4-cấu-trúc-thư-mục)
+- [5. Chi tiết các tầng dữ liệu (Data Layers)](#5-chi-tiết-các-tầng-dữ-liệu-data-layers)
   - [Bronze Layer (Raw Data)](#-bronze-layer-raw-data)
   - [Silver Layer (Cleaned & Standardized Data)](#-silver-layer-cleaned--standardized-data)
   - [Gold Layer (Business-Ready Data)](#-gold-layer-business-ready-data)
-- [5. Nguồn dữ liệu (Data Sources)](#5-nguồn-dữ-liệu-data-sources)
-- [6. Hướng dẫn cài đặt & Thực thi](#6-hướng-dẫn-cài-đặt--thực-thi)
+- [6. Nguồn dữ liệu (Data Sources)](#6-nguồn-dữ-liệu-data-sources)
+- [7. Hướng dẫn cài đặt & Thực thi](#7-hướng-dẫn-cài-đặt--thực-thi)
   - [Bước 1: Khởi tạo Database & Schemas](#bước-1-khởi-tạo-database--schemas)
   - [Bước 2: Tạo DDL & Nạp dữ liệu tầng Bronze](#bước-2-tạo-ddl--nạp-dữ-liệu-tầng-bronze)
   - [Bước 3: Làm sạch & Chuyển đổi sang tầng Silver](#bước-3-làm-sạch--chuyển-đổi-sang-tầng-silver)
   - [Bước 4: Xây dựng Dimensional Model tầng Gold](#bước-4-xây-dựng-dimensional-model-tầng-gold)
-- [7. Giám sát & Xử lý lỗi (Error Handling & Logging)](#7-giám-sát--xử-lý-lỗi-error-handling--logging)
-- [8. Công nghệ sử dụng](#8-công-nghệ-sử-dụng)
+- [8. Giám sát & Xử lý lỗi (Error Handling & Logging)](#8-giám-sát--xử-lý-lỗi-error-handling--logging)
+- [9. Công nghệ sử dụng](#9-công-nghệ-sử-dụng)
 
 ---
 
@@ -70,7 +71,95 @@ flowchart LR
 
 ---
 
-## 2. Mô hình tích hợp nguồn dữ liệu (Integration Model)
+## 2. Luồng dữ liệu & Nguồn gốc (Data Flow / Data Lineage)
+
+Sơ đồ thể hiện chi tiết nguồn gốc và dòng chảy dữ liệu (Data Lineage) từ các tập tin nguồn **CRM & ERP** qua từng tầng **Bronze** ➔ **Silver** ➔ **Gold**:
+
+```mermaid
+flowchart LR
+    subgraph Sources["📁 Sources"]
+        direction TB
+        subgraph CRM_SRC["🏢 CRM"]
+            CRM_sales["sales_details.csv"]
+            CRM_cust["cust_info.csv"]
+            CRM_prd["prd_info.csv"]
+        end
+        subgraph ERP_SRC["🏭 ERP"]
+            ERP_cust["CUST_AZ12.csv"]
+            ERP_loc["LOC_A101.csv"]
+            ERP_cat["PX_CAT_G1V2.csv"]
+        end
+    end
+
+    subgraph Bronze["🥉 Bronze Layer"]
+        direction TB
+        B_sales["crm_sales_details"]
+        B_cust["crm_cust_info"]
+        B_prd["crm_prd_info"]
+        B_az12["erp_cust_az12"]
+        B_loc["erp_loc_a101"]
+        B_cat["erp_px_cat_g1v2"]
+    end
+
+    subgraph Silver["🥈 Silver Layer"]
+        direction TB
+        S_sales["crm_sales_details"]
+        S_cust["crm_cust_info"]
+        S_prd["crm_prd_info"]
+        S_az12["erp_cust_az12"]
+        S_loc["erp_loc_a101"]
+        S_cat["erp_px_cat_g1v2"]
+    end
+
+    subgraph Gold["🥇 Gold Layer"]
+        direction TB
+        G_fact["fact_sales"]
+        G_dim_cust["dim_customers"]
+        G_dim_prd["dim_products"]
+    end
+
+    %% Sources -> Bronze
+    CRM_sales --> B_sales
+    CRM_cust --> B_cust
+    CRM_prd --> B_prd
+    ERP_cust --> B_az12
+    ERP_loc --> B_loc
+    ERP_cat --> B_cat
+
+    %% Bronze -> Silver
+    B_sales --> S_sales
+    B_cust --> S_cust
+    B_prd --> S_prd
+    B_az12 --> S_az12
+    B_loc --> S_loc
+    B_cat --> S_cat
+
+    %% Silver -> Gold
+    S_sales --> G_fact
+    S_cust --> G_dim_cust
+    S_az12 --> G_dim_cust
+    S_loc --> G_dim_cust
+    S_prd --> G_dim_prd
+    S_cat --> G_dim_prd
+
+    %% Styling
+    classDef bronzeStyle fill:#fff3e0,stroke:#f57c00,stroke-width:1.5px,color:#e65100
+    classDef silverStyle fill:#eceff1,stroke:#78909c,stroke-width:1.5px,color:#263238
+    classDef goldStyle fill:#fffde7,stroke:#fbc02d,stroke-width:1.5px,color:#f57f17
+
+    class B_sales,B_cust,B_prd,B_az12,B_loc,B_cat bronzeStyle
+    class S_sales,S_cust,S_prd,S_az12,S_loc,S_cat silverStyle
+    class G_fact,G_dim_cust,G_dim_prd goldStyle
+```
+
+### 🔄 Chi tiết luồng tổng hợp tầng Gold:
+- **`gold.fact_sales`**: Nạp từ `silver.crm_sales_details`.
+- **`gold.dim_customers`**: Tích hợp từ 3 bảng: `silver.crm_cust_info` + `silver.erp_cust_az12` + `silver.erp_loc_a101`.
+- **`gold.dim_products`**: Tích hợp từ 2 bảng: `silver.crm_prd_info` + `silver.erp_px_cat_g1v2`.
+
+---
+
+## 3. Mô hình tích hợp nguồn dữ liệu (Integration Model)
 
 Sơ đồ thể hiện mối quan hệ giữa các bảng nguồn từ 2 hệ thống **CRM** và **ERP** theo các miền nghiệp vụ (**Domain: CUSTOMER, PRODUCT, SALES**):
 
@@ -119,7 +208,7 @@ flowchart LR
 
 ---
 
-## 3. Cấu trúc thư mục
+## 4. Cấu trúc thư mục
 
 ```plaintext
 sql-data-warehouse-project/
@@ -142,7 +231,7 @@ sql-data-warehouse-project/
 
 ---
 
-## 4. Chi tiết các tầng dữ liệu (Data Layers)
+## 5. Chi tiết các tầng dữ liệu (Data Layers)
 
 ### 🥉 Bronze Layer (Raw Data)
 * **Mục tiêu**: Lưu trữ toàn bộ dữ liệu thô nguyên bản từ các file CSV của CRM & ERP mà không qua xử lý.
@@ -190,7 +279,7 @@ sql-data-warehouse-project/
 
 ---
 
-## 5. Nguồn dữ liệu (Data Sources)
+## 6. Nguồn dữ liệu (Data Sources)
 
 | Hệ thống nguồn | Tên File | Mô tả nội dung | Khóa liên kết (Key) |
 | :--- | :--- | :--- | :--- |
@@ -203,7 +292,7 @@ sql-data-warehouse-project/
 
 ---
 
-## 6. Hướng dẫn cài đặt & Thực thi
+## 7. Hướng dẫn cài đặt & Thực thi
 
 ### Bước 1: Khởi tạo Database & Schemas
 Mở SQL Server Management Studio (SSMS) hoặc Azure Data Studio, chạy file:
@@ -244,7 +333,7 @@ Thực thi các view / table mô hình Star Schema:
 
 ---
 
-## 7. Giám sát & Xử lý lỗi (Error Handling & Logging)
+## 8. Giám sát & Xử lý lỗi (Error Handling & Logging)
 
 Các Stored Procedure trong dự án được thiết kế kèm cơ chế giám sát hoàn chỉnh:
 - **Đo lường thời gian (Performance Metrics)**: Ghi nhận thời gian bắt đầu, kết thúc và tổng thời lượng nạp cho từng bảng và toàn bộ batch.
@@ -252,7 +341,7 @@ Các Stored Procedure trong dự án được thiết kế kèm cơ chế giám 
 
 ---
 
-## 8. Công nghệ sử dụng
+## 9. Công nghệ sử dụng
 
 - **Database Engine**: Microsoft SQL Server
 - **Ngôn ngữ**: T-SQL (Transact-SQL)
