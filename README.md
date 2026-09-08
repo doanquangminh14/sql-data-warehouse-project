@@ -14,6 +14,8 @@ Dự án xây dựng hệ thống **Modern Data Warehouse** từ đầu đến c
   - [Silver Layer (Cleaned & Standardized Data)](#-silver-layer-cleaned--standardized-data)
   - [Gold Layer (Business-Ready Data)](#-gold-layer-business-ready-data)
 - [6. Nguồn dữ liệu (Data Sources)](#6-nguồn-dữ-liệu-data-sources)
+  - [Hệ thống CRM](#-hệ-thống-crm)
+  - [Hệ thống ERP](#-hệ-thống-erp)
 - [7. Hướng dẫn cài đặt & Thực thi](#7-hướng-dẫn-cài-đặt--thực-thi)
   - [Bước 1: Khởi tạo Database & Schemas](#bước-1-khởi-tạo-database--schemas)
   - [Bước 2: Tạo DDL & Nạp dữ liệu tầng Bronze](#bước-2-tạo-ddl--nạp-dữ-liệu-tầng-bronze)
@@ -73,18 +75,20 @@ flowchart LR
 
 ## 2. Luồng dữ liệu & Nguồn gốc (Data Flow / Data Lineage)
 
-Sơ đồ thể hiện chi tiết nguồn gốc và dòng chảy dữ liệu (Data Lineage) từ các tập tin nguồn **CRM & ERP** qua từng tầng **Bronze** ➔ **Silver** ➔ **Gold**:
+Sơ đồ thể hiện chi tiết nguồn gốc và dòng chảy dữ liệu (Data Lineage) từ các tập tin nguồn qua từng tầng, được phân nhóm **CRM hoàn chỉnh trước rồi đến ERP**:
 
 ```mermaid
 flowchart LR
     subgraph Sources["📁 Sources"]
         direction TB
-        subgraph CRM_SRC["🏢 CRM"]
-            CRM_sales["sales_details.csv"]
+        subgraph CRM_SRC["🏢 CRM (Source Files)"]
+            direction TB
             CRM_cust["cust_info.csv"]
             CRM_prd["prd_info.csv"]
+            CRM_sales["sales_details.csv"]
         end
-        subgraph ERP_SRC["🏭 ERP"]
+        subgraph ERP_SRC["🏭 ERP (Source Files)"]
+            direction TB
             ERP_cust["CUST_AZ12.csv"]
             ERP_loc["LOC_A101.csv"]
             ERP_cat["PX_CAT_G1V2.csv"]
@@ -93,69 +97,87 @@ flowchart LR
 
     subgraph Bronze["🥉 Bronze Layer"]
         direction TB
-        B_sales["crm_sales_details"]
-        B_cust["crm_cust_info"]
-        B_prd["crm_prd_info"]
-        B_az12["erp_cust_az12"]
-        B_loc["erp_loc_a101"]
-        B_cat["erp_px_cat_g1v2"]
+        subgraph B_CRM["🏢 CRM Tables"]
+            direction TB
+            B_cust["bronze.crm_cust_info"]
+            B_prd["bronze.crm_prd_info"]
+            B_sales["bronze.crm_sales_details"]
+        end
+        subgraph B_ERP["🏭 ERP Tables"]
+            direction TB
+            B_az12["bronze.erp_cust_az12"]
+            B_loc["bronze.erp_loc_a101"]
+            B_cat["bronze.erp_px_cat_g1v2"]
+        end
     end
 
     subgraph Silver["🥈 Silver Layer"]
         direction TB
-        S_sales["crm_sales_details"]
-        S_cust["crm_cust_info"]
-        S_prd["crm_prd_info"]
-        S_az12["erp_cust_az12"]
-        S_loc["erp_loc_a101"]
-        S_cat["erp_px_cat_g1v2"]
+        subgraph S_CRM["🏢 CRM Tables"]
+            direction TB
+            S_cust["silver.crm_cust_info"]
+            S_prd["silver.crm_prd_info"]
+            S_sales["silver.crm_sales_details"]
+        end
+        subgraph S_ERP["🏭 ERP Tables"]
+            direction TB
+            S_az12["silver.erp_cust_az12"]
+            S_loc["silver.erp_loc_a101"]
+            S_cat["silver.erp_px_cat_g1v2"]
+        end
     end
 
     subgraph Gold["🥇 Gold Layer"]
         direction TB
-        G_fact["fact_sales"]
-        G_dim_cust["dim_customers"]
-        G_dim_prd["dim_products"]
+        G_dim_cust["dim_customers<br/><i>(Dimension)</i>"]
+        G_dim_prd["dim_products<br/><i>(Dimension)</i>"]
+        G_fact["fact_sales<br/><i>(Fact)</i>"]
     end
 
-    %% Sources -> Bronze
-    CRM_sales --> B_sales
+    %% Sources -> Bronze (CRM)
     CRM_cust --> B_cust
     CRM_prd --> B_prd
+    CRM_sales --> B_sales
+
+    %% Sources -> Bronze (ERP)
     ERP_cust --> B_az12
     ERP_loc --> B_loc
     ERP_cat --> B_cat
 
-    %% Bronze -> Silver
-    B_sales --> S_sales
+    %% Bronze -> Silver (CRM)
     B_cust --> S_cust
     B_prd --> S_prd
+    B_sales --> S_sales
+
+    %% Bronze -> Silver (ERP)
     B_az12 --> S_az12
     B_loc --> S_loc
     B_cat --> S_cat
 
-    %% Silver -> Gold
-    S_sales --> G_fact
+    %% Silver -> Gold (Integration)
     S_cust --> G_dim_cust
     S_az12 --> G_dim_cust
     S_loc --> G_dim_cust
+
     S_prd --> G_dim_prd
     S_cat --> G_dim_prd
+
+    S_sales --> G_fact
 
     %% Styling
     classDef bronzeStyle fill:#fff3e0,stroke:#f57c00,stroke-width:1.5px,color:#e65100
     classDef silverStyle fill:#eceff1,stroke:#78909c,stroke-width:1.5px,color:#263238
     classDef goldStyle fill:#fffde7,stroke:#fbc02d,stroke-width:1.5px,color:#f57f17
 
-    class B_sales,B_cust,B_prd,B_az12,B_loc,B_cat bronzeStyle
-    class S_sales,S_cust,S_prd,S_az12,S_loc,S_cat silverStyle
-    class G_fact,G_dim_cust,G_dim_prd goldStyle
+    class B_cust,B_prd,B_sales,B_az12,B_loc,B_cat bronzeStyle
+    class S_cust,S_prd,S_sales,S_az12,S_loc,S_cat silverStyle
+    class G_dim_cust,G_dim_prd,G_fact goldStyle
 ```
 
-### 🔄 Chi tiết luồng tổng hợp tầng Gold:
-- **`gold.fact_sales`**: Nạp từ `silver.crm_sales_details`.
-- **`gold.dim_customers`**: Tích hợp từ 3 bảng: `silver.crm_cust_info` + `silver.erp_cust_az12` + `silver.erp_loc_a101`.
-- **`gold.dim_products`**: Tích hợp từ 2 bảng: `silver.crm_prd_info` + `silver.erp_px_cat_g1v2`.
+### 🔄 Chi tiết luồng tích hợp tầng Gold:
+- **`gold.dim_customers`**: Tích hợp từ `silver.crm_cust_info` (CRM) + `silver.erp_cust_az12` (ERP) + `silver.erp_loc_a101` (ERP).
+- **`gold.dim_products`**: Tích hợp từ `silver.crm_prd_info` (CRM) + `silver.erp_px_cat_g1v2` (ERP).
+- **`gold.fact_sales`**: Nạp từ `silver.crm_sales_details` (CRM).
 
 ---
 
@@ -214,7 +236,13 @@ flowchart LR
 sql-data-warehouse-project/
 ├── datasets/                 # Chứa các file dữ liệu nguồn (.csv)
 │   ├── source_crm/           # Dữ liệu từ hệ thống CRM (Khách hàng, Sản phẩm, Bán hàng)
+│   │   ├── cust_info.csv
+│   │   ├── prd_info.csv
+│   │   └── sales_details.csv
 │   └── source_erp/           # Dữ liệu từ hệ thống ERP (Vị trí, Phân loại, Danh mục)
+│       ├── CUST_AZ12.csv
+│       ├── LOC_A101.csv
+│       └── PX_CAT_G1V2.csv
 ├── docs/                     # Tài liệu thiết kế, Data Dictionary, Kiến trúc hệ thống
 ├── scripts/                  # Mã nguồn SQL và Stored Procedures
 │   ├── init_database.sql     # Khởi tạo Database 'DataWarehouse' và các schema
@@ -239,13 +267,15 @@ sql-data-warehouse-project/
   - Dữ liệu dạng thô (as-is), kiểu dữ liệu chuỗi hoặc định dạng gốc.
   - Sử dụng lệnh `BULK INSERT` để nạp dữ liệu số lượng lớn với hiệu năng cao.
   - Stored Procedure `bronze.load_bronze` tự động `TRUNCATE` và nạp lại toàn bộ (Full Load) kèm theo tính toán thời gian chạy (Execution Duration) và khối `TRY...CATCH` bắt lỗi.
-* **Bảng dữ liệu**:
-  - `bronze.crm_cust_info`: Thông tin khách hàng thô từ CRM.
-  - `bronze.crm_prd_info`: Thông tin sản phẩm thô từ CRM.
-  - `bronze.crm_sales_details`: Lịch sử đơn hàng thô từ CRM.
-  - `bronze.erp_cust_az12`: Dữ liệu bổ sung khách hàng (ngày sinh, giới tính) từ ERP.
-  - `bronze.erp_loc_a101`: Dữ liệu quốc gia theo khách hàng từ ERP.
-  - `bronze.erp_px_cat_g1v2`: Dữ liệu phân loại danh mục sản phẩm từ ERP.
+* **Danh sách bảng**:
+  - **Nhóm bảng CRM**:
+    - `bronze.crm_cust_info`: Thông tin khách hàng thô từ CRM.
+    - `bronze.crm_prd_info`: Thông tin sản phẩm thô từ CRM.
+    - `bronze.crm_sales_details`: Lịch sử đơn hàng thô từ CRM.
+  - **Nhóm bảng ERP**:
+    - `bronze.erp_cust_az12`: Dữ liệu bổ sung khách hàng (ngày sinh, giới tính) từ ERP.
+    - `bronze.erp_loc_a101`: Dữ liệu quốc gia theo khách hàng từ ERP.
+    - `bronze.erp_px_cat_g1v2`: Dữ liệu phân loại danh mục sản phẩm từ ERP.
 
 ---
 
@@ -257,13 +287,15 @@ sql-data-warehouse-project/
   - **Data Normalization & Mapping**: Chuẩn hóa mã viết tắt (ví dụ: `M` ➔ `Married`, `S` ➔ `Single`, `M` ➔ `Male`, `F` ➔ `Female`, dòng sản phẩm `M` ➔ `Mountain`, `R` ➔ `Road`, `T` ➔ `Touring`, `S` ➔ `Other Sales`).
   - **Derived Columns**: Xử lý logic SCD/lịch sử thời gian với `LEAD()` (`prd_start_dt`, `prd_end_dt`), trích xuất `cat_id` từ chuỗi `prd_key`.
   - **Audit Columns**: Thêm cột `dwh_create_date` ghi nhận thời gian xử lý ETL vào kho.
-* **Bảng dữ liệu**:
-  - `silver.crm_cust_info`
-  - `silver.crm_prd_info`
-  - `silver.crm_sales_details`
-  - `silver.erp_cust_az12`
-  - `silver.erp_loc_a101`
-  - `silver.erp_px_cat_g1v2`
+* **Danh sách bảng**:
+  - **Nhóm bảng CRM**:
+    - `silver.crm_cust_info`
+    - `silver.crm_prd_info`
+    - `silver.crm_sales_details`
+  - **Nhóm bảng ERP**:
+    - `silver.erp_cust_az12`
+    - `silver.erp_loc_a101`
+    - `silver.erp_px_cat_g1v2`
 
 ---
 
@@ -281,14 +313,19 @@ sql-data-warehouse-project/
 
 ## 6. Nguồn dữ liệu (Data Sources)
 
-| Hệ thống nguồn | Tên File | Mô tả nội dung | Khóa liên kết (Key) |
+### 🏢 Hệ thống CRM
+| Tên File | Bảng đích (Bronze/Silver) | Mô tả nội dung | Khóa liên kết (Key) |
 | :--- | :--- | :--- | :--- |
-| **CRM** | `cust_info.csv` | Thông tin định danh khách hàng, họ tên, tình trạng hôn nhân, giới tính, ngày tạo. | `cst_id`, `cst_key` |
-| **CRM** | `prd_info.csv` | Thông tin mã sản phẩm, tên, giá vốn, dòng sản phẩm, ngày hiệu lực. | `prd_id`, `prd_key` |
-| **CRM** | `sales_details.csv` | Thông tin chi tiết đơn hàng, số lượng, doanh thu, ngày đặt/giao/hạn. | `sls_ord_num`, `prd_key`, `cst_id` |
-| **ERP** | `cust_az12.csv` | Thông tin nhân khẩu học (ngày sinh, giới tính) của khách hàng. | `cid` (➔ `cst_key`) |
-| **ERP** | `loc_a101.csv` | Thông tin quốc gia/địa lý của khách hàng. | `cid` (➔ `cst_key`) |
-| **ERP** | `px_cat_g1v2.csv` | Danh mục, tiểu mục và thông tin bảo trì sản phẩm. | `id` (➔ `cat_id`) |
+| `cust_info.csv` | `crm_cust_info` | Thông tin định danh khách hàng, họ tên, tình trạng hôn nhân, giới tính, ngày tạo. | `cst_id`, `cst_key` |
+| `prd_info.csv` | `crm_prd_info` | Thông tin mã sản phẩm, tên, giá vốn, dòng sản phẩm, ngày hiệu lực. | `prd_id`, `prd_key` |
+| `sales_details.csv` | `crm_sales_details` | Thông tin chi tiết đơn hàng, số lượng, doanh thu, ngày đặt/giao/hạn. | `sls_ord_num`, `prd_key`, `cst_id` |
+
+### 🏭 Hệ thống ERP
+| Tên File | Bảng đích (Bronze/Silver) | Mô tả nội dung | Khóa liên kết (Key) |
+| :--- | :--- | :--- | :--- |
+| `CUST_AZ12.csv` | `erp_cust_az12` | Thông tin nhân khẩu học (ngày sinh, giới tính) của khách hàng. | `cid` (➔ `cst_key`) |
+| `LOC_A101.csv` | `erp_loc_a101` | Thông tin quốc gia/địa lý của khách hàng. | `cid` (➔ `cst_key`) |
+| `PX_CAT_G1V2.csv` | `erp_px_cat_g1v2` | Danh mục, tiểu mục và thông tin bảo trì sản phẩm. | `id` (➔ `cat_id`) |
 
 ---
 
