@@ -175,12 +175,12 @@ Sơ đồ thể hiện mối quan hệ giữa các bảng nguồn từ 2 hệ th
 flowchart LR
     subgraph CRM["🏢 CRM (Customer Relationship Management)"]
         direction LR
-        sales["<b>crm_sales_details</b><br/><i>Transactional Records about Sales & Orders</i><br/>🔑 <code>prd_key</code><br/>🔑 <code>cst_id</code><br/>━━━━━━━━━━━━━<br/><b>🟣 SALES</b>"]
+        sales["<b>crm_sales_details</b><br/><i>Transactional Records about Sales & Orders</i><br/>───────────────────<br/>🔑 <code>prd_key</code><br/>🔑 <code>cst_id</code><br/>───────────────────<br/><b>🟣 SALES</b>"]
         
         subgraph CRM_ENTITIES[" "]
             direction TB
-            prd["<b>crm_prd_info</b><br/><i>Current & History Product Information</i><br/>🔑 <code>prd_key</code><br/>━━━━━━━━━━━━━<br/><b>🔴 PRODUCT</b>"]
-            cust["<b>crm_cust_info</b><br/><i>Customer Information</i><br/>🔑 <code>cst_id</code><br/>🔑 <code>cst_key</code><br/>━━━━━━━━━━━━━<br/><b>🟢 CUSTOMER</b>"]
+            prd["<b>crm_prd_info</b><br/><i>Current & History Product Information</i><br/>───────────────────<br/>🔑 <code>prd_key</code><br/>───────────────────<br/><b>🔴 PRODUCT</b>"]
+            cust["<b>crm_cust_info</b><br/><i>Customer Information</i><br/>───────────────────<br/>🔑 <code>cst_id</code><br/>🔑 <code>cst_key</code><br/>───────────────────<br/><b>🟢 CUSTOMER</b>"]
         end
 
         sales -->|prd_key| prd
@@ -189,9 +189,9 @@ flowchart LR
 
     subgraph ERP["🏭 ERP (Enterprise Resource Planning)"]
         direction TB
-        cat["<b>erp_px_cat_g1v2</b><br/><i>Product Categories</i><br/>🔑 <code>id</code><br/>━━━━━━━━━━━━━<br/><b>🔴 PRODUCT</b>"]
-        extra["<b>erp_cust_az12</b><br/><i>Extra Customer Information (Birthdate)</i><br/>🔑 <code>cid</code><br/>━━━━━━━━━━━━━<br/><b>🟢 CUSTOMER</b>"]
-        loc["<b>erp_loc_a101</b><br/><i>Location of Customers (Country)</i><br/>🔑 <code>cid</code><br/>━━━━━━━━━━━━━<br/><b>🟢 CUSTOMER</b>"]
+        cat["<b>erp_px_cat_g1v2</b><br/><i>Product Categories</i><br/>───────────────────<br/>🔑 <code>id</code><br/>───────────────────<br/><b>🔴 PRODUCT</b>"]
+        extra["<b>erp_cust_az12</b><br/><i>Extra Customer Information (Birthdate)</i><br/>───────────────────<br/>🔑 <code>cid</code><br/>───────────────────<br/><b>🟢 CUSTOMER</b>"]
+        loc["<b>erp_loc_a101</b><br/><i>Location of Customers (Country)</i><br/>───────────────────<br/>🔑 <code>cid</code><br/>───────────────────<br/><b>🟢 CUSTOMER</b>"]
     end
 
     prd -->|id| cat
