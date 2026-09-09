@@ -307,6 +307,54 @@ sql-data-warehouse-project/
 * **Đặc điểm**:
   - Triển khai dưới dạng **SQL Views** (không lưu trữ trùng lặp vật lý, luôn phản ánh dữ liệu mới nhất từ Silver).
   - Tích hợp logic nghiệp vụ, surrogate keys, đo lường (measures) và các trường phân tích.
+
+#### ⭐ Sơ đồ mô hình hình sao (Star Schema Model):
+
+```mermaid
+erDiagram
+    gold_dim_customers ||--o{ gold_fact_sales : "FK2: customer_key"
+    gold_dim_products ||--o{ gold_fact_sales : "FK1: product_key"
+
+    gold_dim_customers {
+        int customer_key PK "Surrogate Key"
+        int customer_id "Customer ID"
+        nvarchar customer_number "Customer Key"
+        nvarchar first_name "First Name"
+        nvarchar last_name "Last Name"
+        nvarchar country "Country"
+        nvarchar marital_status "Marital Status"
+        nvarchar gender "Gender"
+        date birthdate "Birthdate"
+        date create_date "Create Date"
+    }
+
+    gold_fact_sales {
+        nvarchar order_number "Order Number"
+        int product_key FK "FK -> dim_products"
+        int customer_key FK "FK -> dim_customers"
+        date order_date "Order Date"
+        date shipping_date "Shipping Date"
+        date due_date "Due Date"
+        numeric sales_amount "Sales Calculation (Qty * Price)"
+        int quantity "Quantity"
+        numeric price "Price"
+    }
+
+    gold_dim_products {
+        int product_key PK "Surrogate Key"
+        int product_id "Product ID"
+        nvarchar product_number "Product Number"
+        nvarchar product_name "Product Name"
+        int category_id "Category ID"
+        nvarchar category "Category"
+        nvarchar subcategory "Subcategory"
+        nvarchar maintenance "Maintenance"
+        numeric cost "Cost"
+        nvarchar product_line "Product Line"
+        date start_date "Start Date"
+    }
+```
+
 * **Các đối tượng phân tích chính**:
   - `gold.dim_customers`: Tích hợp khách hàng từ CRM và ERP (`cust_info` + `cust_az12` + `loc_a101`), tạo khóa thay thế `customer_key`, ưu tiên giới tính CRM và fallback sang ERP.
   - `gold.dim_products`: Tích hợp sản phẩm và phân loại từ CRM và ERP (`prd_info` + `px_cat_g1v2`), tạo `product_key`, lọc dữ liệu sản phẩm đang hiệu lực (`prd_end_dt IS NULL`).
