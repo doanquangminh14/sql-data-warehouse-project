@@ -21,6 +21,7 @@ Dự án xây dựng hệ thống **Modern Data Warehouse** từ đầu đến c
   - [Bước 2: Tạo DDL & Nạp dữ liệu tầng Bronze](#bước-2-tạo-ddl--nạp-dữ-liệu-tầng-bronze)
   - [Bước 3: Làm sạch & Chuyển đổi sang tầng Silver](#bước-3-làm-sạch--chuyển-đổi-sang-tầng-silver)
   - [Bước 4: Xây dựng Dimensional Model tầng Gold](#bước-4-xây-dựng-dimensional-model-tầng-gold)
+  - [Bước 5: Kiểm tra chất lượng dữ liệu (Data Quality Checks)](#bước-5-kiểm-tra-chất-lượng-dữ-liệu-data-quality-checks)
 - [8. Giám sát & Xử lý lỗi (Error Handling & Logging)](#8-giám-sát--xử-lý-lỗi-error-handling--logging)
 - [9. Công nghệ sử dụng](#9-công-nghệ-sử-dụng)
 
@@ -253,8 +254,10 @@ sql-data-warehouse-project/
 │   │   ├── ddl_silver.sql
 │   │   └── proc_load_silver.sql
 │   └── gold/                 # Scripts xây dựng Dimension & Fact Views/Tables tầng Gold
+│       └── ddl_gold.sql
 └── tests/                    # Scripts kiểm thử chất lượng dữ liệu & Data Quality Checks
-    └── quality_checks_silver # Kiểm tra chất lượng dữ liệu tầng Silver
+    ├── quality_checks_silver.sql # Kiểm tra chất lượng dữ liệu tầng Silver
+    └── quality_checks_gold.sql   # Kiểm tra chất lượng dữ liệu tầng Gold
 ```
 
 ---
@@ -303,11 +306,11 @@ sql-data-warehouse-project/
 * **Mục tiêu**: Xây dựng mô hình hình sao (**Star Schema**) gồm các bảng **Dimension** và **Fact** tối ưu hóa cho việc truy vấn và báo cáo phân tích.
 * **Đặc điểm**:
   - Triển khai dưới dạng **SQL Views** (không lưu trữ trùng lặp vật lý, luôn phản ánh dữ liệu mới nhất từ Silver).
-  - Tích hợp logic nghiệp vụ, đo lường (measures) và các trường phân tích.
+  - Tích hợp logic nghiệp vụ, surrogate keys, đo lường (measures) và các trường phân tích.
 * **Các đối tượng phân tích chính**:
-  - `gold.dim_customers`: Kết hợp thông tin khách hàng từ CRM và ERP (`cust_info` + `cust_az12` + `loc_a101`).
-  - `gold.dim_products`: Kết hợp danh mục sản phẩm từ CRM và ERP (`prd_info` + `px_cat_g1v2`).
-  - `gold.fact_sales`: Bảng dữ liệu sự kiện bán hàng (`crm_sales_details`) liên kết với các Dimension Keys.
+  - `gold.dim_customers`: Tích hợp khách hàng từ CRM và ERP (`cust_info` + `cust_az12` + `loc_a101`), tạo khóa thay thế `customer_key`, ưu tiên giới tính CRM và fallback sang ERP.
+  - `gold.dim_products`: Tích hợp sản phẩm và phân loại từ CRM và ERP (`prd_info` + `px_cat_g1v2`), tạo `product_key`, lọc dữ liệu sản phẩm đang hiệu lực (`prd_end_dt IS NULL`).
+  - `gold.fact_sales`: Bảng dữ liệu sự kiện bán hàng (`crm_sales_details`) liên kết với `dim_products` và `dim_customers` qua các surrogate keys (`product_key`, `customer_key`).
 
 ---
 
@@ -361,12 +364,27 @@ Mở SQL Server Management Studio (SSMS) hoặc Azure Data Studio, chạy file:
    ```sql
    -- Đường dẫn: scripts/silver/proc_load_silver.sql
    ```
+3. Chạy thủ tục nạp dữ liệu tầng Silver:
+   ```sql
+   EXEC silver.load_silver;
+   ```
 
 ### Bước 4: Xây dựng Dimensional Model tầng Gold
-Thực thi các view / table mô hình Star Schema:
+Thực thi script tạo các Views Dimension & Fact cho tầng Gold (Star Schema):
 ```sql
--- Đường dẫn: scripts/gold/
+-- Đường dẫn: scripts/gold/ddl_gold.sql
 ```
+
+### Bước 5: Kiểm tra chất lượng dữ liệu (Data Quality Checks)
+Thực thi các script kiểm thử chất lượng dữ liệu để đảm bảo tính toàn vẹn (Integrity), tính duy nhất (Uniqueness) và không có dữ liệu rác:
+1. **Kiểm tra chất lượng tầng Silver**:
+   ```sql
+   -- Đường dẫn: tests/quality_checks_silver.sql
+   ```
+2. **Kiểm tra tính toàn vẹn và khóa tầng Gold**:
+   ```sql
+   -- Đường dẫn: tests/quality_checks_gold.sql
+   ```
 
 ---
 
