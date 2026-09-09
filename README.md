@@ -244,7 +244,10 @@ sql-data-warehouse-project/
 │       ├── CUST_AZ12.csv
 │       ├── LOC_A101.csv
 │       └── PX_CAT_G1V2.csv
-├── docs/                     # Tài liệu thiết kế, Data Dictionary, Kiến trúc hệ thống
+├── doc/                      # Tài liệu thiết kế, Data Catalog, Quy ước đặt tên & Kiến trúc
+│   ├── architecture.md       # Tổng hợp sơ đồ kiến trúc, Data Lineage & Star Schema
+│   ├── data_catalog.md       # Danh mục dữ liệu và từ điển dữ liệu tầng Gold
+│   └── naming_conventions.md # Quy ước đặt tên Schema, Bảng, Cột, Stored Procedure
 ├── scripts/                  # Mã nguồn SQL và Stored Procedures
 │   ├── init_database.sql     # Khởi tạo Database 'DataWarehouse' và các schema
 │   ├── bronze/               # Scripts định nghĩa DDL và nạp dữ liệu tầng Bronze
